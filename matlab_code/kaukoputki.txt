@@ -1,0 +1,75 @@
+JAKOKOSKEN KAUKOPUTKEN OHJAUS
+
+1. KƒYNNISTYS
+
+Kaukoputken ohjaamiseen tarkoitettu Matlab-pohjainen graafinen k‰yttˆliittym‰ aloitetaan "Kaukoputki" kuvakkeesta, joka k‰ynnist‰‰ Matlabin. Matlabin komentorivilt‰ annetaan joko komento "kaukoputki" tai "gui". Ensimm‰inen toimii reaaliajassa, ts. p‰ivitt‰‰ kent‰t sekunnin v‰lein. J‰lkimm‰inen p‰ivitt‰‰ vain halutessa, mik‰ on kannattavampaa hitaalla tietokoneella touhutessa, sill‰ ohjelman suoritus on varsin raskasta.
+
+2. ALOITUS
+
+Ohjelman t‰ytyy aluksi tiet‰‰ kaukoputken sijainti. T‰t‰ varten on vasemmalla ylh‰‰ll‰ kent‰t, joihin voi syˆtt‰‰ maantieteelliset koordinaatit (Jakokoski: -29∞59'48" l‰ntist‰ pituutta, 62∞43'38" pohjoista leveytt‰, 155 m merenpinnasta, normaali ilmanpaine 1013 mbar ja l‰mpˆtila havaintoyˆn mukaan). Ohjelman voi laittaa seuraamaan tietokoneen kelloa (CPU kello), jolloin pvm ja klo p‰ivittyv‰t sen mukaan. Koordinaattij‰rjestelm‰ksi voi valita apparentin (nutaatio ja vuotuinen aberraatio mukana) sek‰ halutun epookin. N‰m‰ eiv‰t vaikuta suuntaustarkkuuteen mitenk‰‰n, vaan pelk‰st‰‰n koordinaattien esitykseen.
+
+Toisekseen t‰ytyy selvitt‰‰ kaukoputken ja jalustan sek‰ t‰htitaivaan v‰linen kytkˆs. T‰m‰n selvitt‰miseksi on kolme vaihtoehtoa.
+
+a. T‰ysi kalibrointi
+
+t‰ytyy suorittaa ainakin silloin kun jalustan asentoa on muutettu. Kalibraatioon kuuluu kolme seurantamoottoreihin kuuluvaa parametria:
+1. Tuntiakselin v‰litys (18800:1)
+2. Deklinaatioakselin v‰litys (14100:1)
+3. Servomoottoreiden askelm‰‰r‰ kierrosta kohden (512),
+sek‰ yhdeks‰n jalustaan kuuluvaa parametria:
+1. Tuntiakselin indeksivirhe (IH, Index error of the Hour axis)
+2. Deklinaatioakselin indeksivirhe (ID, Index error of the Declination axis)
+3. Tuntiakselin it‰-l‰nsi- virhe (MA, polar axis left-right misalignment)
+4. Tuntiakselin kallistusvirhe (ME, polar axis vertical misalignment)
+5. Kollimaatiovirhe (CH, Collimation error)
+6. Akselien kohtisuoruusvirhe (NP, Non-Penpendicularity)
+7. Putken taipuma (TF, Tube Flexure)
+8. Haarukan taipuma (FF, Fork Flexure)
+9. Deklinaatioakselin taipuma (DF, Declination axis Flexure).
+
+N‰ill‰ virheill‰ on erilaiset vaikutukset sek‰ rektaskensio- ett‰ deklinaatiosuunnissa. IH ja ID ovat pelk‰st‰‰n tunti- ja deklinaatioakseleiden nollakohtien sijaintivirheet. MA ja ME tulevat jalustan v‰‰r‰st‰ suuntauksesta. CH on seurausta siit‰, ett‰ putken optinen akseli ei ole kohtisuorassa deklinaatioakseliin n‰hden, NP taas siit‰, ett‰ tunti- ja deklinaatioakselit eiv‰t ole kohtisuorassa. Taipumista FT vaikuttaa eniten horisontin suunnassa suoraan alasp‰in. FF vaikuttaa taas eniten etel‰meridiaanin suunnassa. DF tulee eniten vastaan it‰-l‰nsi- suunnissa. Virheist‰ on kerrottu varsin kattavasti mm. T-Point Softwaren www-sivuilla (http://www.tpsoft.demon.co.uk/pointing.htm). Sek‰ moottoriparametrit ett‰ jalustavirheet (kaarisekunteina) voi tarkistaa ja halutessaan m‰‰ritell‰ "/Kaukoputki/Konfiguraatio" valikosta.
+
+Em. parametreja ei voi kuitenkaan vet‰‰ hihasta, vaan ne on mitattava. T‰h‰n tarkoitukseen soveltuu valikon "/Kaukoputki/Kalibrointi" ohjelma. Yl‰osassa ovat jalustavirheet (IH,...DF kaarisekunteina, FF on toistaiseksi disabloitu) ja joista voidaan valita kalibroinnissa valittavat virheet. Keskirivill‰ vasemmalla on kalibraatiot‰htien valikko, kalibraationappula, p‰ivitysnappula sek‰ resettinappula. Alemmas tulee valitut kalibraatiot‰hdet, johon tulostuu kalibraatiot‰hden todellinen sek‰ j‰lustan havaitsema suunta. "Otoksen kalibrointivirhe"- ikkunaan tulee kullekin kalibraatiot‰hdelle todellisen ja havaitun (senhetkisen kalibroinnin avulla lasketun) paikan virhe. Alarivin nappuloilla voi poistaa kalibrointit‰hden listalta, tyhjent‰‰ listan kokonaan sek‰ hyv‰ksy‰ tai hyl‰t‰ kalibroinnin.
+
+Homma menee kutakuinkin n‰in. 
+a) Valitse ne jalustavirheet, jotka haluat kalibroida. Muut pysyv‰t muuttumattomina
+b) Valitse listalta jokin t‰hti, jonka tunnistat varmasti, olkoot se vaikka alpha Tau, eli Aldebaran.
+c) K‰y suuntaamassa putki Joystickilla tarkasti Aldebaraniin. Tarkka tekij‰ k‰ytt‰‰ StarTrackeri‰ ja kohdistaa mahdollisimman tarkasti Aldebaranin vaikkapa CCD-kameran pikseliin (50,50). Perusseuranta pidet‰‰n koko ajan p‰‰ll‰! 
+d) Kavutaan takaisin alas ja painetaan "Kalibroi" nappulaa. Aldebaranin tulisi ilmesty‰ listalle ja otoksen kalibrointivirhe n‰ky‰ rastilla merkittyn‰.
+e) Jatketaan kohdasta b) siten, ett‰ t‰hti‰ valitaan eri puolilta taivasta. 
+
+Kalibraatiot‰htien m‰‰r‰n kasvaessa pit‰isi eri kalibraatiovirheiden arvot alkaa asettua ja otoksen kalibraatiovirhett‰ kuvaavien merkkien keskitty‰ kauniisti origon ymp‰rille. Kasan koosta voi p‰‰tell‰ kuinka tarkasti putki pystyt‰‰n suuntaamaan haluttuihin koordinaatteihin. Kaariminuutin luokkaan pit‰isi kyll‰ p‰‰st‰, mik‰ vastaa Jupiterin n‰enn‰ist‰ kokoa (ei siis mitenk‰‰n huono suuntaus!). Kalibrointiin on syyt‰ k‰ytt‰‰ jopa parikymment‰ t‰hte‰. Tarvittaessa huonosti suunnattu kalibraatiot‰hti voidaan poistaa listalta "Poista" nappulalla h‰iritsem‰st‰ muuten hyv‰‰ kalibrointia. Onnistuneen n‰kˆinen kalibrointi kuitataan "Hyv‰ksy"-nappulalla. Hyv‰‰n tulokseen p‰‰sty‰‰n kannattaa tallettaa parametrit "/Tiedosto/Tallenna asetukset" valikosta (esim. tiedostoon Kaukoputki.cfg)
+
+b. Osittainen kalibrointi
+
+Tarvitaan, havaintoyˆn aluksi referenssiajon sijaan, mik‰li kohdan a. kalibrointi on aikaisemmin suoritettu ja parametrit tallennettu.T‰ss‰ haetaan vain tunti- ja deklinaatioakseleiden nollakohtien paikat (IH ja ID). Homma etenee muuten kuten kohdassa a., mutta vain IH ja ID valitaan kalibrointiin. Periaatteessa riitt‰‰ yksi kalibraatiot‰hti, mutta toinen ei haittaa. N‰in saadaan kytkˆs t‰htitaivaan suuntien ja seurantamoottoreiden akseleiden asentojen v‰lille.
+
+c. Referenssiajo
+
+T‰m‰n toiminnon tarkoituksena on ajaa kaukoputki osoittamaan ennalta sovittuun pisteeseen, eli etel‰‰n 0-deklinaatiolle. T‰t‰ varten kaukoputken akseleille on asennettu valoportteihin perustuvat tunnistimet. Referenssiajossa pyydet‰‰n ensin suuntaamaan kaukoputki etel‰meridiaanin it‰- ja 0-deklinaation etel‰puolelle. Ohjelma siirt‰‰ kaukoputkea l‰nteen ja ylˆs kunnes se saavuttaa nollapisteen. Mik‰li t‰m‰n j‰lkeen suoritetaan kohdan b. (tai kohdan a.) kalibrointi, saadaan IH ja ID virheist‰ tieto siit‰, miten hyvin tunnistimet on s‰‰detty osoittamaan 0-pistett‰. N‰iden temppujen j‰lkeen ei illan aluksi ole tarpeen kuin ajaa referenssiajo, jolloin ohjelma osaa ottaa huomioon jalustan suuntausvirheet sek‰ t‰htitaivaan kulloisen sijainnin. Siksi tietokoneen kellonaika on syyt‰ pit‰‰ ajassa (tarkemmin ottaen sit‰ ei saa muutella havaintoyˆn aikana).
+
+3. KƒYTT÷
+
+Nyt p‰‰st‰‰n k‰ytt‰m‰‰n ohjelmaa t‰ysill‰. "/Kohde" valikosta voi valita haluamansa kohteen
+a) HR (BSC, Yale Bright Star Catalog)- luettelon numeron tai t‰hden nimen mukaan 
+b) NGC (New General Catalog)- luettelon numeron mukaan
+c) IC (Index Catalog)- luettelon numeron mukaan
+d) Messier- luettelon numeron mukaan
+e) Listalta parhaita kaksoist‰hti‰
+f) Listalta parhaita galakseja (Messier kohteet)
+g) Listalta parhaita sumuja (Messier kohteet)
+h) Listalta parhaita galakseja (Messier kohteet)
+i) Listalta parhaita avoimia t‰htijoukkoja (Messier kohteet)
+j) Listalta parhaita pallomaisia t‰htijoukkoja (Messier kohteet)
+k) Listalta planeetat tai voit syˆtt‰‰ kohteen rataelementit
+l) tai syˆtt‰‰ suoraan rektaskension ja deklinaation.
+
+"P‰ivit‰"-nappulalla voit p‰ivitt‰‰ koordinaatit ym., mik‰li et k‰yt‰ reaaliaikaista k‰yttˆliittym‰‰. Muutoinhan se p‰ivitt‰ kaikkien kenttien tiedot sekunnin v‰lein. "Kohdista"-namikka saa kaukoputken menn‰ rymistelem‰‰n kohti valittua kohdetta, mik‰li se on horisontin yl‰puolella eik‰ ole (turvallisuussyist‰) liian l‰hell‰ Aurinkoa. Ohjelma herjaa, jos olet j‰tt‰nyt jonkin kohdan 2 kalibroinneista v‰liin. "Pys‰yt‰"-nappula on ns. paniikkinappula, jos jokin meni vikaan tai muuten haluat keskeytt‰‰ joko suuntauksen tai referenssiajon. "Lopeta"-nappulalla p‰‰set eroon koko ohjelmasta.
+
+4. AKNOWLEDGEMENT
+
+Ohjelman pohjana on FM Marjut Ristolan kaukoputken ohjausohjelma, jonka Pertti P‰‰kkˆnen on laatinut uuteen uskoon lis‰‰m‰ll‰ siihen jalustavirheet huomioon ottavan algoritmin sek‰ kalibraatioalgoritmit. Jalustavirheiden kompensointi parustuu Software Bisquen TPoint Software- ohjelman teoriaan http://www.tpsoft.demon.co.uk/). Muutoinkin alkuper‰ist‰ ohjelmaa on monipuolistettu enemm‰n t‰htitieteilij‰n tarpeita vastaavaksi. Ohjelman ja seurantamoottoreiden ohjausyksikˆn v‰linen keskustelu (nanomex.dll) perustuu FT Jari R‰s‰sen luomaan C-kieliseen koodiin.
+
+Joensuussa 25. lokakuuta 2001
+Pertti P‰‰kkˆnen
+pertti.paakkonen@joensuu.fi

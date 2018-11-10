@@ -1,0 +1,11 @@
+if ~tags findtags; end;
+tz=str2dec(get(htz,'String'));
+cputime=get(hcputime,'Value');
+pit=str2dec(get(hpit,'String'))*pi/180;
+lev=str2dec(get(hlev,'String'))*pi/180;
+kork=str2double(get(hkork,'String'));
+paine=str2double(get(hpaine,'String'));
+temp=str2double(get(htemp,'String'));
+apparent=get(happarent,'Value');
+epochofdate=get(hepochofdate,'Value');
+recalc;
