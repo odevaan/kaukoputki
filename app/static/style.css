@@ -1,0 +1,127 @@
+/* --- Dark Mode Palette --- */
+:root {
+    --bg-color: #060d42;
+    --text-color: #E0E0E0;
+    --header-color: #FFFFFF;
+    --list-bg-color: #0a125a;
+    --selection-bg-color: #4a90e2; /* A nice light blue */
+    --selection-text-color: #FFFFFF;
+    --button-bg-color: #1a236b;
+    --button-hover-bg-color: #2a338b;
+    --border-color: #1a236b;
+    --status-bg-color: #0a125a;
+    --error-color: #C71585; /* Reddish-purple */
+    --success-color: #2E8B57; /* SeaGreen */
+}
+
+/* --- General Styles --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 1000px;
+    margin: auto;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+h1, h2 {
+    color: var(--header-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+/* --- Catalog List Styles --- */
+#catalog-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    list-style-type: none;
+    background-color: var(--list-bg-color);
+    border-radius: 5px;
+}
+
+#catalog-list li {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+#catalog-list li:hover {
+    background-color: var(--button-bg-color);
+}
+
+#catalog-list li.selected {
+    background-color: var(--selection-bg-color);
+    color: var(--selection-text-color);
+    font-weight: bold;
+}
+
+/* --- Controls & Buttons --- */
+.controls {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: var(--list-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    background-color: var(--button-bg-color);
+    color: var(--header-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+    background-color: var(--button-hover-bg-color);
+}
+
+button:disabled {
+    background-color: #333;
+    color: #888;
+    cursor: not-allowed;
+}
+
+/* --- Status Box --- */
+#status {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: var(--status-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    transition: all 0.3s ease-in-out;
+}
+
+.status-error {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+.status-success {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+/* --- Loading Spinner --- */
+.loader {
+    border: 4px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 4px solid var(--selection-bg-color);
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    display: none; /* Hidden by default */
+    margin-top: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
