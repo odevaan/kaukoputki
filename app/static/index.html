@@ -12,6 +12,9 @@
         #catalog-list li:hover { background-color: #f0f0f0; }
         #status { margin-top: 20px; padding: 10px; background-color: #eee; border: 1px solid #ddd; }
         .controls { margin-top: 20px; }
+        .input-group { margin-bottom: 10px; }
+        .input-group label { display: inline-block; width: 150px; }
+        .input-group input { padding: 5px; font-size: 1em; width: 100px; }
         button { padding: 10px 15px; font-size: 1em; }
     </style>
 </head>
@@ -30,6 +33,16 @@
     <div class="controls">
         <h2>Telescope Actions</h2>
         <p>Selected Object: <strong id="selected-object-name">None</strong></p>
+
+        <div class="input-group">
+            <label for="temp-input">Temperature (°C):</label>
+            <input type="number" id="temp-input" value="-10.0">
+        </div>
+        <div class="input-group">
+            <label for="pressure-input">Pressure (hPa):</label>
+            <input type="number" id="pressure-input" value="1013.0">
+        </div>
+
         <button id="slew-button" disabled>Slew to Selected Object</button>
     </div>
 
@@ -43,6 +56,8 @@
             const selectedObjectName = document.getElementById('selected-object-name');
             const slewButton = document.getElementById('slew-button');
             const statusMessage = document.getElementById('status-message');
+            const tempInput = document.getElementById('temp-input');
+            const pressureInput = document.getElementById('pressure-input');
 
             let selectedObject = null;
             let catalogData = [];
@@ -93,6 +108,18 @@
                 statusMessage.textContent = `Slewing to ${selectedObject.name}...`;
                 slewButton.disabled = true;
 
+                const temp = parseFloat(tempInput.value);
+                const pressure = parseFloat(pressureInput.value);
+
+                if (isNaN(temp) || isNaN(pressure)) {
+                    statusMessage.textContent = 'Invalid temperature or pressure value.';
+                    slewButton.disabled = false;
+                    return;
+                }
+
+                statusMessage.textContent = `Slewing to ${selectedObject.name}...`;
+                slewButton.disabled = true;
+
                 fetch('/telescope/slew', {
                     method: 'POST',
                     headers: {
@@ -101,6 +128,8 @@
                     body: JSON.stringify({
                         ra: selectedObject.ra_deg,
                         dec: selectedObject.dec_deg,
+                        temp: temp,
+                        pressure: pressure,
                     }),
                 })
                 .then(response => response.json())

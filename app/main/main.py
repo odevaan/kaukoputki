@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 from app.utils.nanomex import Nanomex
 from app.utils.pointing import get_horizontal_coords
 from app.utils.catalogs import load_messier_catalog
@@ -34,6 +35,8 @@ def startup_event():
 class SlewRequest(BaseModel):
     ra: float
     dec: float
+    temp: Optional[float] = -10.0
+    pressure: Optional[float] = 1013.0
 
 @app.get("/")
 async def read_index():
@@ -72,17 +75,15 @@ def slew_to_coords(req: SlewRequest):
     Calculates pointing coordinates and simulates slewing the telescope.
     """
     try:
-        # Hardcoded observatory and weather parameters for now
+        # Observatory location is hardcoded, but weather is from request
         lat, lon, alt = 62.727, 29.996, 155
-        temp, pressure = -10.0, 1013.0
-
         now = Time.now()
 
         # Calculate the required Az/Alt for the target
         horizontal_coords = get_horizontal_coords(
             ra=req.ra, dec=req.dec,
             lat=lat, lon=lon, alt=alt,
-            temp=temp, pressure=pressure,
+            temp=req.temp, pressure=req.pressure,
             time=now
         )
 
