@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jakokoski Telescope Control</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 1000px; margin: auto; }
+        h1, h2 { color: #333; }
+        #catalog-list { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; list-style-type: none; }
+        #catalog-list li { padding: 5px; cursor: pointer; }
+        #catalog-list li:hover { background-color: #f0f0f0; }
+        #status { margin-top: 20px; padding: 10px; background-color: #eee; border: 1px solid #ddd; }
+        .controls { margin-top: 20px; }
+        button { padding: 10px 15px; font-size: 1em; }
+    </style>
+</head>
+<body>
+
+    <h1>Jakokoski Telescope Control</h1>
+
+    <div class="controls">
+        <h2>Messier Catalog</h2>
+        <p>Click an object to select it, then click Slew.</p>
+        <ul id="catalog-list">
+            <!-- Catalog items will be loaded here -->
+        </ul>
+    </div>
+
+    <div class="controls">
+        <h2>Telescope Actions</h2>
+        <p>Selected Object: <strong id="selected-object-name">None</strong></p>
+        <button id="slew-button" disabled>Slew to Selected Object</button>
+    </div>
+
+    <div id="status">
+        <strong>Status:</strong> <span id="status-message">Ready.</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const catalogList = document.getElementById('catalog-list');
+            const selectedObjectName = document.getElementById('selected-object-name');
+            const slewButton = document.getElementById('slew-button');
+            const statusMessage = document.getElementById('status-message');
+
+            let selectedObject = null;
+            let catalogData = [];
+
+            // Fetch and display the Messier catalog on page load
+            statusMessage.textContent = 'Loading Messier catalog...';
+            fetch('/catalog/messier')
+                .then(response => response.json())
+                .then(data => {
+                    catalogData = data;
+                    catalogList.innerHTML = ''; // Clear loading message
+                    data.forEach(obj => {
+                        const li = document.createElement('li');
+                        li.textContent = `${obj.name} (${obj.description})`;
+                        li.dataset.mNum = obj.m_num;
+                        catalogList.appendChild(li);
+                    });
+                    statusMessage.textContent = 'Catalog loaded successfully.';
+                })
+                .catch(err => {
+                    statusMessage.textContent = `Error loading catalog: ${err.message}`;
+                    console.error(err);
+                });
+
+            // Handle clicks on the catalog list
+            catalogList.addEventListener('click', (event) => {
+                if (event.target && event.target.nodeName === 'LI') {
+                    const mNum = parseInt(event.target.dataset.mNum, 10);
+                    selectedObject = catalogData.find(obj => obj.m_num === mNum);
+
+                    if (selectedObject) {
+                        selectedObjectName.textContent = selectedObject.name;
+                        slewButton.disabled = false;
+                        // Highlight selection
+                        Array.from(catalogList.children).forEach(li => li.style.backgroundColor = '');
+                        event.target.style.backgroundColor = '#d0e0ff';
+                    }
+                }
+            });
+
+            // Handle the slew button click
+            slewButton.addEventListener('click', () => {
+                if (!selectedObject) {
+                    statusMessage.textContent = 'No object selected.';
+                    return;
+                }
+
+                statusMessage.textContent = `Slewing to ${selectedObject.name}...`;
+                slewButton.disabled = true;
+
+                fetch('/telescope/slew', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ra: selectedObject.ra_deg,
+                        dec: selectedObject.dec_deg,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.detail) { // Handle FastAPI HTTPExceptions
+                        throw new Error(data.detail);
+                    }
+                    statusMessage.textContent = `Slew command successful for ${selectedObject.name}. Az: ${data.calculated_alt_az.az.toFixed(4)}, Alt: ${data.calculated_alt_az.alt.toFixed(4)}`;
+                })
+                .catch(err => {
+                    statusMessage.textContent = `Error during slew: ${err.message}`;
+                    console.error(err);
+                })
+                .finally(() => {
+                    if (selectedObject) {
+                        slewButton.disabled = false;
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
