@@ -27,6 +27,7 @@ body {
 }
 
 h1, h2 {
+    /* Ensure header color uses the correct variable */
     color: var(--header-color);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
@@ -90,10 +91,33 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.input-group {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.input-group label {
+    display: inline-block;
+    width: 150px;
+    margin-right: 10px;
+}
+
+.input-group input {
+    padding: 8px;
+    font-size: 1em;
+    width: 120px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+}
+
 /* --- Status Box --- */
 #status {
     margin-top: 20px;
     padding: 15px;
+    /* Ensure status background and border use correct variables */
     background-color: var(--status-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 5px;
