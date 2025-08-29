@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jakokoski Telescope Control</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="manifest" href="/static/site.webmanifest">
     <style>
         body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 1000px; margin: auto; }
         h1, h2 { color: #333; }
@@ -92,8 +96,8 @@
                         selectedObjectName.textContent = selectedObject.name;
                         slewButton.disabled = false;
                         // Highlight selection
-                        Array.from(catalogList.children).forEach(li => li.style.backgroundColor = '');
-                        event.target.style.backgroundColor = '#d0e0ff';
+                        Array.from(catalogList.children).forEach(li => li.classList.remove('selected'));
+                        event.target.classList.add('selected');
                     }
                 }
             });
