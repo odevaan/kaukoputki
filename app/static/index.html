@@ -4,19 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jakokoski Telescope Control</title>
-    <style>
-        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 1000px; margin: auto; }
-        h1, h2 { color: #333; }
-        #catalog-list { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; list-style-type: none; }
-        #catalog-list li { padding: 5px; cursor: pointer; }
-        #catalog-list li:hover { background-color: #f0f0f0; }
-        #status { margin-top: 20px; padding: 10px; background-color: #eee; border: 1px solid #ddd; }
-        .controls { margin-top: 20px; }
-        .input-group { margin-bottom: 10px; }
-        .input-group label { display: inline-block; width: 150px; }
-        .input-group input { padding: 5px; font-size: 1em; width: 100px; }
-        button { padding: 10px 15px; font-size: 1em; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -92,8 +80,8 @@
                         selectedObjectName.textContent = selectedObject.name;
                         slewButton.disabled = false;
                         // Highlight selection
-                        Array.from(catalogList.children).forEach(li => li.style.backgroundColor = '');
-                        event.target.style.backgroundColor = '#d0e0ff';
+                        Array.from(catalogList.children).forEach(li => li.classList.remove('selected'));
+                        event.target.classList.add('selected');
                     }
                 }
             });
