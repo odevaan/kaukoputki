@@ -1,17 +1,18 @@
-/* --- Dark Mode Palette --- */
+/* --- Celestial Command Palette --- */
 :root {
-    --bg-color: #060d42;
-    --text-color: #E0E0E0;
-    --header-color: #FFFFFF;
-    --list-bg-color: #0a125a;
-    --selection-bg-color: #4a90e2; /* A nice light blue */
-    --selection-text-color: #FFFFFF;
-    --button-bg-color: #1a236b;
-    --button-hover-bg-color: #2a338b;
-    --border-color: #1a236b;
-    --status-bg-color: #0a125a;
-    --error-color: #C71585; /* Reddish-purple */
-    --success-color: #2E8B57; /* SeaGreen */
+    --bg-color: #1E293B; /* Deep Space Blue */
+    --text-color: #E2E8F0; /* Starlight */
+    --header-color: #E2E8F0; /* Starlight */
+    --list-bg-color: #334155; /* Nebula Grey */
+    --selection-bg-color: #38BDF8; /* Ion Blue */
+    --selection-text-color: #E2E8F0; /* Starlight */
+    --button-bg-color: #334155; /* Nebula Grey */
+    --button-hover-bg-color: #F59E0B; /* Supernova Gold */
+    --border-color: #94A3B8; /* Galactic Haze */
+    --status-bg-color: #334155; /* Nebula Grey */
+    --error-color: #EF4444; /* Critical Alert */
+    --success-color: #22C55E; /* System Normal */
+    --warning-color: #FBBF24; /* Cautionary Amber */
 }
 
 /* --- General Styles --- */
@@ -124,4 +125,20 @@ button:disabled {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* --- Animations --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out forwards;
 }
