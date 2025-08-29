@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jakokoski Telescope Control</title>
+    <link rel="stylesheet" href="style.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
@@ -73,10 +74,12 @@
                 .then(data => {
                     catalogData = data;
                     catalogList.innerHTML = ''; // Clear loading message
-                    data.forEach(obj => {
+                    data.forEach((obj, index) => {
                         const li = document.createElement('li');
                         li.textContent = `${obj.name} (${obj.description})`;
                         li.dataset.mNum = obj.m_num;
+                        li.style.animationDelay = `${index * 0.05}s`;
+                        li.classList.add('fade-in');
                         catalogList.appendChild(li);
                     });
                     statusMessage.textContent = 'Catalog loaded successfully.';
