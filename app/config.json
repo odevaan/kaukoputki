@@ -1,0 +1,46 @@
+{
+    "observatory": {
+        "name": "Jakokoski Observatory",
+        "latitude_deg": 62.727222,
+        "longitude_deg": 29.996667,
+        "elevation_m": 155.0,
+        "temperature_c": -10.0,
+        "pressure_hpa": 1013.0
+    },
+    "serial": {
+        "port": "COM1",
+        "baudrate": 9600,
+        "timeout_sec": 2.0,
+        "mock_mode": true
+    },
+    "safety": {
+        "min_ha_deg": -220.0,
+        "max_ha_deg": 220.0,
+        "min_dec_deg": -50.0,
+        "max_dec_deg": 90.0,
+        "min_alt_deg": 0.0,
+        "sun_avoidance_deg": 4.0,
+        "max_slew_speed": 6000
+    },
+    "kinematics": {
+        "m_ra": 18800.0,
+        "m_de": 14100.0,
+        "n_step": 512.0,
+        "park_ha_deg": 0.0,
+        "park_dec_deg": 0.0
+    },
+    "pointing": {
+        "ih": -0.02978904,
+        "id": 0.02517092,
+        "ma": 0.0028946,
+        "me": -0.00086716,
+        "ch": -6.161e-05,
+        "np": -0.00028962,
+        "tf": -6.67e-05,
+        "ff": 0.0,
+        "df": -0.0005963,
+        "enabled": true
+    },
+    "alpaca_port": 11111,
+    "enable_discovery": true
+}
