@@ -86,7 +86,19 @@ Upon launch, the driver:
 
 ---
 
-## 3. Client Connection (N.I.N.A. & Stellarium)
+## 3. Client Connection (KStars/Ekos, N.I.N.A., & Stellarium)
+
+### Connecting KStars & Ekos (Linux)
+*For a detailed walkthrough, see the dedicated [KStars & Ekos Connection Guide](KSTARS_EKOS_SETUP.md).*
+1. In KStars, open **Ekos** (`Ctrl + K`).
+2. Create or edit an Equipment Profile:
+   - Under **Mount**: Select **Alpaca Mount** (or **Alpaca Telescope**).
+   - Under **CCD / Guider**: Select your imaging/guide cameras.
+3. Start INDI $\to$ In the **Alpaca Mount** tab of the INDI Control Panel:
+   - Set **Host**: `127.0.0.1` (or server IP)
+   - Set **Port**: `11111`
+   - Set **Device Number**: `0`
+4. Click **Connect**. Ekos connects to the Kaukoputki driver, displays coordinates, and is ready for Slew & Plate Solve alignment.
 
 ### Connecting N.I.N.A.
 1. Open N.I.N.A. $\to$ **Equipment** $\to$ **Telescope**.

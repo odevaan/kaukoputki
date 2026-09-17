@@ -56,6 +56,7 @@ python run_driver.py --port COM1
 ---
 
 ## Documentation
+- [KStars & Ekos Connection Guide](docs/KSTARS_EKOS_SETUP.md) - Connecting and plate-solving with KStars / Ekos via INDI on Linux.
 - [Operating Guide](docs/OPERATING_GUIDE.md) - Standard operating procedures, N.I.N.A./Stellarium integration, plate-solve calibration, and systemd service setup.
 - [Architecture](docs/ARCHITECTURE.md) - Software architecture, components, and Alpaca V3 endpoints.
 - [Findings & Reverse Engineering](docs/findings.md) - Extracted MATLAB control parameters, Jetter Nano-B registers, gear ratios, and safety envelopes.
