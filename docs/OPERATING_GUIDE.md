@@ -27,18 +27,54 @@ Before turning on the motor power or launching the driver:
 1. Verify the physical Emergency Stop button is accessible and not depressed.
 2. Power on the Jetter Nano-B controller and motor power supplies.
 
-### Step 3: Launch the Driver Service
-On Linux (or Windows):
-```bash
-# Activate virtual environment
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+### Step 3: First-Time Setup on Linux (One-time)
+If you just cloned the repository on Linux, create the virtual environment and install dependencies:
 
-# Run with physical serial port
+```bash
+# 1. Install system prerequisites (Debian/Ubuntu/Raspberry Pi OS)
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip
+
+# 2. Add your user to the dialout group for serial port (/dev/ttyUSB0) access
+sudo usermod -aG dialout $USER
+# Note: Log out and log back in (or run 'newgrp dialout') for group changes to take effect.
+
+# 3. Create the Python virtual environment (.venv)
+python3 -m venv .venv
+
+# 4. Activate and install requirements
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r app/requirements.txt
+```
+
+### Step 4: Launch the Driver Service on Linux
+
+Identify your serial port:
+```bash
+# Check connected USB-serial adapters or serial ports
+ls -l /dev/ttyUSB* /dev/ttyS*
+# Or check kernel messages:
+dmesg | grep -i tty
+```
+
+Run the driver:
+```bash
+# Activate the virtual environment
+source .venv/bin/activate
+
+# Launch connected to physical Jetter Nano-B via RS-232
 python run_driver.py --port /dev/ttyUSB0
 
-# Or run in mock mode for testing without hardware
-python run_driver.py --mock
+# Or run directly without activating:
+.venv/bin/python run_driver.py --port /dev/ttyUSB0
+
+# Or launch in mock simulation mode (no hardware required)
+.venv/bin/python run_driver.py --mock
 ```
+
+*(On Windows, use `.venv\Scripts\activate` or `.venv\Scripts\python run_driver.py --port COM1`)*
+
 
 Upon launch, the driver:
 - Reads the system clock and computes the exact **Local Sidereal Time (LST)**.
@@ -118,3 +154,38 @@ curl -X PUT http://localhost:11111/api/v1/telescope/0/safety \
    - This instantly switches axes to speed mode with velocity = 0, silences the buzzer, and halts motion.
 2. **Hardware E-Stop**:
    - Hit the physical red emergency stop button inline with motor DC power.
+
+---
+
+## 7. Running as a Background Service on Linux (systemd)
+
+For permanent observatory setups (e.g. Raspberry Pi or mini PC), you can run the driver automatically at boot as a systemd service.
+
+Create `/etc/systemd/system/kaukoputki.service`:
+```ini
+[Unit]
+Description=Kaukoputki ASCOM Alpaca Telescope Driver
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/kaukoputki
+ExecStart=/home/pi/kaukoputki/.venv/bin/python run_driver.py --port /dev/ttyUSB0
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable kaukoputki
+sudo systemctl start kaukoputki
+
+# Check status:
+systemctl status kaukoputki
+```
+
