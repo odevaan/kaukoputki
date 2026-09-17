@@ -189,10 +189,60 @@ class LX200Server:
                 return "M#" # Coordinates matched
             return "N#"
 
-        # 6. Status queries
-        elif cmd == ":GW" or cmd == "GW":
+        # 6. Status & Site queries
+        elif cmd in [":GW", "GW"]:
             # Alignment status: P = Polar
             return "PT#"
+
+        elif cmd in [":Gt", "Gt"]:
+            # Get Latitude: sDD*MM#
+            lat = self.model.config.observatory.latitude_deg
+            sign = "+" if lat >= 0 else "-"
+            abs_lat = abs(lat)
+            d = int(abs_lat)
+            m = int((abs_lat - d) * 60)
+            return f"{sign}{d:02d}*{m:02d}#"
+
+        elif cmd in [":Gg", "Gg"]:
+            # Get Longitude: DDD*MM# (Meade standard: degrees West 0..360)
+            # Longitude in config is East positive (e.g. 29.9967 deg East = 330.0033 deg West)
+            lon_east = self.model.config.observatory.longitude_deg
+            lon_west = (360.0 - (lon_east % 360.0)) % 360.0
+            d = int(lon_west)
+            m = int((lon_west - d) * 60)
+            return f"{d:03d}*{m:02d}#"
+
+        elif cmd in [":GL", "GL"]:
+            # Get Local Time: HH:MM:SS#
+            now = time.localtime()
+            return f"{now.tm_hour:02d}:{now.tm_min:02d}:{now.tm_sec:02d}#"
+
+        elif cmd in [":GC", "GC"]:
+            # Get Calendar Date: MM/DD/YY#
+            now = time.localtime()
+            return f"{now.tm_mon:02d}/{now.tm_mday:02d}/{str(now.tm_year)[-2:]}#"
+
+        elif cmd in [":GG", "GG"]:
+            # Get UTC offset in hours
+            offset_hours = -int(time.timezone / 3600)
+            sign = "+" if offset_hours >= 0 else "-"
+            return f"{sign}{abs(offset_hours):02d}#"
+
+        elif cmd in [":D", "D"]:
+            # Distance / slewing status: returns '|#' when slewing, empty '#' when stationary
+            return "|#" if self.model.is_slewing else "#"
+
+        elif cmd in [":U", "U"]:
+            # Toggle precision mode (accept and return nothing)
+            return None
+
+        elif cmd.startswith((":St", "St", ":Sg", "Sg", ":SL", "SL", ":SC", "SC", ":SG", "SG")):
+            # Set site/time commands: acknowledge with "1"
+            return "1"
+
+        elif cmd.startswith((":Rg", "Rg", ":Rc", "Rc", ":Rm", "Rm", ":Rs", "Rs")):
+            # Set motion rates: acknowledge
+            return None
 
         elif cmd == ":hP" or cmd == "hP":
             # Park mount

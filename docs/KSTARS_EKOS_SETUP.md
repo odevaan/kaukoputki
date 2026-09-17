@@ -27,20 +27,20 @@ The driver will log:
 1. In KStars, press `Ctrl + K` to open **Ekos**.
 2. Click **+** to add or edit your Equipment Profile:
    - **Profile Name**: `Jakokoski Observatory`
-   - Under **Mount**: Select **Meade $\to$ LX200 Generic** (or filter `LX200 Generic`).
+   - Under **Mount**: Select **LX200 Basic** (or **LX200 Classic**).
    - Under **CCD / Guider**: Select your imaging and guide cameras (or CCD Simulator).
 3. Click **Save**.
 
 ### Step 3: Set Connection Port in Ekos
 1. Select the profile and click **Start INDI**.
-2. In the **INDI Control Panel** that opens, switch to the **LX200 Generic** tab.
+2. In the **INDI Control Panel** that opens, switch to the **LX200 Basic** tab.
 3. Open the **Connection** tab:
    - Connection Mode: Select **Network** (TCP) instead of Serial.
    - **Server Host / IP**: `127.0.0.1` (or the IP of the Linux driver machine).
    - **Port**: `4030`.
    - Click **Save**.
 4. Click **Connect**:
-   - The status turns green!
+   - The status light turns green!
    - The telescope crosshairs will appear on the KStars map at the South park position.
    - Slew, sync (plate solve), park, unpark, and guiding are fully functional.
 
