@@ -2,132 +2,97 @@
 
 This guide explains how to connect and operate the **Kaukoputki Jetter Nano-B Telescope Driver** using **KStars and Ekos** on Linux (Ubuntu, Debian, Raspberry Pi OS, Astroberry, or StellarMate).
 
----
-
-## 1. Overview & Architecture
-
-KStars/Ekos uses the **INDI (Instrument-Neutral Device Interface)** protocol. INDI includes a native **INDI-Alpaca bridge driver** (`indi_alpaca_telescope`), allowing Ekos to seamlessly connect to our ASCOM Alpaca driver over the local network or on `localhost`.
-
-```mermaid
-graph LR
-    subgraph Linux PC / Observatory Server
-        Ekos[KStars / Ekos] -->|INDI Protocol| INDIDriver[INDI Alpaca Telescope Driver]
-        INDIDriver -->|HTTP REST :11111| Kaukoputki[Kaukoputki Alpaca Driver]
-        Kaukoputki -->|RS-232 /dev/ttyUSB0| Jetter[Jetter Nano-B Controller]
-    end
-```
+The driver supports two connection methods for Linux:
+1. **Method 1 (Recommended & Instant)**: Connect via **Meade LX200 Generic** over TCP (`localhost:4030`). This driver is **pre-installed by default in 100% of KStars/Ekos installations**. No PPAs or extra packages are needed!
+2. **Method 2**: Connect via the **INDI Alpaca Telescope Bridge** over HTTP (`localhost:11111`) using the official INDI PPA.
 
 ---
 
-## 2. Prerequisites & Installation
+## Method 1: Direct Connection via LX200 Generic (No extra packages needed!)
 
-### Step 1: Install KStars and INDI Drivers
-On Debian / Ubuntu / Mint / Raspberry Pi OS:
+The Kaukoputki driver service includes a built-in Meade LX200 network server on TCP port `4030`. Every KStars/Ekos installation already comes with the `indi_lx200generic` driver pre-installed.
 
-```bash
-# Add official INDI PPA (Ubuntu/Mint)
-sudo add-apt-repository -y ppa:mutlaqja/ppa
-sudo apt update
-
-# Install KStars, Ekos, and INDI standard drivers (which include Alpaca support)
-sudo apt install -y kstars-bleeding indi-bin indi-alpaca astap
-```
-
-*(If on Debian or Raspberry Pi OS without PPA, install via `sudo apt install -y kstars indi-bin` or use pre-configured astronomical distributions like Astroberry or StellarMate).*
-
-### Step 2: Ensure Kaukoputki Driver is Running
-Verify the Kaukoputki driver service is running in another terminal or as a systemd service:
-
+### Step 1: Start the Kaukoputki Driver
 ```bash
 cd ~/kaukoputki
 source .venv/bin/activate
+
+# Launch with your serial port (or --mock for simulation)
 python run_driver.py --port /dev/ttyUSB0
 ```
-*(Or `python run_driver.py --mock` for testing without hardware).*
+The driver will log:
+`LX200 TCP server running on 0.0.0.0:4030 (KStars/Ekos compatible)`
 
-The Alpaca server should report listening on port `11111`.
+### Step 2: Configure Ekos Equipment Profile
+1. In KStars, press `Ctrl + K` to open **Ekos**.
+2. Click **+** to add or edit your Equipment Profile:
+   - **Profile Name**: `Jakokoski Observatory`
+   - Under **Mount**: Select **Meade $\to$ LX200 Generic** (or filter `LX200 Generic`).
+   - Under **CCD / Guider**: Select your imaging and guide cameras (or CCD Simulator).
+3. Click **Save**.
 
----
-
-## 3. Configuring Ekos Profile
-
-1. Open **KStars**.
-2. Click the **Ekos** icon on the top toolbar (or press `Ctrl + K`).
-3. In the Ekos setup window:
-   - Click the **+** (Add Profile) button or edit your existing profile.
-   - **Profile Name**: e.g., `Jakokoski Observatory`.
-   - **Mode**: Select **Local** (if KStars and the driver run on the same machine) or **Remote** (if connecting across LAN).
-   - Under **Mount**: Select **Alpaca Mount** (or **Alpaca Telescope**).
-   - Under **CCD / Camera**: Select your primary imaging camera (e.g. ZWO, QHY, DSLR, or CCD Simulator).
-   - Under **Guider**: Select your guide camera or **Internal Guider**.
+### Step 3: Set Connection Port in Ekos
+1. Select the profile and click **Start INDI**.
+2. In the **INDI Control Panel** that opens, switch to the **LX200 Generic** tab.
+3. Open the **Connection** tab:
+   - Connection Mode: Select **Network** (TCP) instead of Serial.
+   - **Server Host / IP**: `127.0.0.1` (or the IP of the Linux driver machine).
+   - **Port**: `4030`.
    - Click **Save**.
-
----
-
-## 4. Connecting to the Alpaca Driver
-
-1. In Ekos, select the newly created profile and click **Start INDI**.
-2. The **INDI Control Panel** window will open.
-3. Select the **Alpaca Mount** tab:
-   - Go to the **Connection** or **Alpaca Server** tab:
-     - **Server Host / IP**: `127.0.0.1` (or the IP address of the Linux server if remote).
-     - **Alpaca Port**: `11111` (default Kaukoputki port).
-     - **Device Number**: `0`.
-   - Click **Save** to persist these settings in INDI.
 4. Click **Connect**:
-   - The status light in INDI turns green.
-   - Ekos will query mount coordinates and tracking status from the Kaukoputki driver.
-   - The mount icon will appear in KStars sky map pointing at the South Park coordinates ($HA = 0^\circ, \delta = 0^\circ$).
+   - The status turns green!
+   - The telescope crosshairs will appear on the KStars map at the South park position.
+   - Slew, sync (plate solve), park, unpark, and guiding are fully functional.
 
 ---
 
-## 5. Plate-Solve Alignment & Calibration Workflow
+## Method 2: Connecting via INDI Alpaca Bridge (`indi_alpaca_telescope`)
 
-> [!IMPORTANT]
-> **Calibrating the Mount via Ekos**:
-> Because physical homing switches have been removed, the mount starts in an uncalibrated state. Use the Ekos **Align** module after your first slew to calibrate pointing.
+If you prefer using the ASCOM Alpaca bridge in Ekos, the `indi-full` package containing `indi_alpaca_telescope` must be installed from the official INDI PPA.
 
-1. **Unpark the Mount**:
-   - In the Ekos **Mount** tab, click **Unpark**.
-   - Tracking is automatically engaged.
-2. **Slew to a Target Star / Field**:
-   - In KStars, right-click a bright star (e.g. Vega, Deneb, Altair, or Polaris) or deep sky object near the meridian.
-   - Select **Telescope** $\to$ **Slew**.
-   - The Kaukoputki driver will verify safety envelopes, turn on the warning buzzer, and slew the mount.
-3. **Capture & Solve (Plate Solving)**:
-   - In Ekos, switch to the **Align** module (target icon).
-   - Set **Action** to **Sync** (or **Slew to Target**).
-   - Solver: Select **StellarSolver** (internal) or **ASTAP**.
-   - Exposure: 2–5 seconds with binning $2\times2$.
+### Why `Unable to locate package indi-full` happens:
+Standard Ubuntu/Debian repositories do not include the `indi-full` metapackage. It is hosted exclusively in the **INDI Library PPA** maintained by the INDI developers.
+
+### Installation Steps (Ubuntu / Linux Mint):
+```bash
+# 1. Add the official INDI PPA
+sudo add-apt-repository -y ppa:mutlaqja/ppa
+
+# 2. Update package cache
+sudo apt update
+
+# 3. Install the full driver suite
+sudo apt install -y indi-full indi-bin
+
+# 4. Verify the Alpaca driver binary is present
+which indi_alpaca_telescope
+# (Output should be: /usr/bin/indi_alpaca_telescope)
+```
+
+### Configure in Ekos:
+1. **Restart KStars** so it re-reads `/usr/share/indi/drivers.xml`.
+2. Open Ekos (`Ctrl + K`) $\to$ edit profile.
+3. Under **Mount**:
+   - Expand the **Alpaca** manufacturer $\to$ select **Alpaca Telescope**.
+4. Start INDI $\to$ In the **Alpaca Telescope** tab:
+   - Set **Host**: `127.0.0.1`
+   - Set **Port**: `11111`
+   - Set **Device Number**: `0`
+5. Click **Connect**.
+
+---
+
+## Slew & Plate-Solve Alignment Routine in Ekos
+
+Because physical homing switches have been removed from the mount, the telescope boots in an uncalibrated park state ($HA = 0^\circ, \delta = 0^\circ$).
+
+1. **Unpark**: In the Ekos **Mount** tab, click **Unpark**.
+2. **Slew**: Right-click a bright star near the meridian in KStars $\to$ select **Telescope $\to$ Slew**.
+3. **Plate Solve**:
+   - Switch to the Ekos **Align** module (target icon).
+   - Select **Action: Sync** (or **Slew to Target**).
    - Click **Capture & Solve**.
-4. **Automatic Synchronization**:
-   - Once resolved, Ekos automatically issues an INDI `Sync` command to the mount.
-   - The Kaukoputki driver receives `/api/v1/telescope/0/synctocoordinates`, updates internal offsets, and marks:
-     `is_calibrated = True`!
-   - Subsequent slews across the sky will now be aligned.
-
----
-
-## 6. Auto-Guiding in Ekos
-
-Ekos includes a built-in guiding module that uses pulse-guiding commands sent through the mount driver:
-
-1. In Ekos, switch to the **Guide** module.
-2. Set **Guide Via**: Select **Mount** (Pulse Guiding via Alpaca driver).
-3. Set **Calibration**:
-   - Choose Calibration Step (e.g. 500 ms).
-   - Point to a star near the celestial equator ($Dec \approx 0^\circ$).
-   - Click **Calibrate**.
-4. Click **Guide**:
-   - Ekos calculates centroid drift and sends pulse correction commands (`moveaxis` / `pulseguide`) to the Kaukoputki driver.
-
----
-
-## 7. Troubleshooting
-
-| Issue | Likely Cause | Solution |
-| :--- | :--- | :--- |
-| **INDI Alpaca Mount driver fails to connect** | Driver service is not running or port is blocked | Verify `python run_driver.py` is running and port `11111` is accessible (`curl http://127.0.0.1:11111/management/apiversions`). |
-| **Slew rejected in Ekos** | Safety limit violated | Check driver logs. The target may be below horizon ($Alt < 0^\circ$), beyond $HA \pm 220^\circ$, or within $4^\circ$ of the Sun. |
-| **Mount does not move when slewing** | Mount is parked | Click **Unpark** in Ekos Mount tab before slewing. |
-| **"Serial port permission denied" on driver startup** | Linux user lacks dialout permissions | Run `sudo usermod -aG dialout $USER` and relog. |
+   - Ekos captures an image using your camera, solves the field with StellarSolver / ASTAP, and sends a `Sync` command to the mount.
+   - The Kaukoputki driver updates internal offsets and marks `is_calibrated = True`!
+4. **Guiding**:
+   - In the Ekos **Guide** module, choose **Guide Via: Mount**. Pulse guiding corrections are handled automatically.

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from app.alpaca_discovery import AlpacaDiscoveryServer
+from app.lx200_server import LX200Server
 from app.config import DriverConfig, SafetyLimits, load_config, save_config
 from app.telescope_model import SafetyLimitViolation, TelescopeModel
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 config: DriverConfig = load_config()
 model: TelescopeModel = TelescopeModel(config=config)
 discovery_server: Optional[AlpacaDiscoveryServer] = None
+lx200_server: Optional[LX200Server] = None
 server_transaction_id = 0
 tx_lock = threading.Lock()
 
@@ -46,17 +48,21 @@ def alpaca_response(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: auto-connect model & start discovery
-    global discovery_server
+    # Startup: auto-connect model, start discovery & LX200 server
+    global discovery_server, lx200_server
     logger.info("Starting Kaukoputki Alpaca Telescope Driver Service...")
     model.connect()
     if config.enable_discovery:
         discovery_server = AlpacaDiscoveryServer(alpaca_port=config.alpaca_port)
         discovery_server.start()
+    lx200_server = LX200Server(model=model, port=4030)
+    lx200_server.start()
     yield
     # Shutdown
     if discovery_server:
         discovery_server.stop()
+    if lx200_server:
+        lx200_server.stop()
     model.disconnect()
     logger.info("Kaukoputki Alpaca Telescope Driver Service stopped.")
 
