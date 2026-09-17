@@ -1,6 +1,7 @@
 import logging
 import socket
 import threading
+import time
 from typing import Optional
 
 from app.telescope_model import TelescopeModel, SafetyLimitViolation
@@ -13,7 +14,7 @@ DEFAULT_LX200_PORT = 4030
 class LX200Server:
     """
     Meade LX200 TCP Command Protocol Server.
-    Provides direct network connectivity for KStars/Ekos (via indi_lx200generic),
+    Provides direct network connectivity for KStars/Ekos (via indi_lx200generic / indi_lx200basic),
     Stellarium, SkySafari, and Cartes du Ciel without requiring extra INDI bridge packages.
     """
 
@@ -78,22 +79,26 @@ class LX200Server:
                 except socket.timeout:
                     continue
 
-                # Process commands separated by '#' or specific single-character prefixes
+                # Process commands separated by '#' or alignment ACK prefix (0x06)
                 while "#" in buffer or "\x06" in buffer:
-                    if "\x06" in buffer and buffer.index("\x06") < buffer.find("#") if "#" in buffer else True:
+                    ack_pos = buffer.find("\x06")
+                    hash_pos = buffer.find("#")
+
+                    if ack_pos != -1 and (hash_pos == -1 or ack_pos < hash_pos):
                         # Alignment query byte (ACK / 0x06)
-                        buffer = buffer[buffer.index("\x06") + 1:]
-                        client_sock.sendall(b"P") # Polar alignment
+                        buffer = buffer[ack_pos + 1:]
+                        client_sock.sendall(b"P")  # Polar alignment
                         continue
 
-                    idx = buffer.index("#")
-                    cmd = buffer[:idx].strip()
-                    buffer = buffer[idx + 1:]
-
-                    if cmd:
-                        resp = self._execute_command(cmd)
-                        if resp:
-                            client_sock.sendall(resp.encode("latin1"))
+                    if hash_pos != -1:
+                        cmd = buffer[:hash_pos].strip()
+                        buffer = buffer[hash_pos + 1:]
+                        if cmd:
+                            resp = self._execute_command(cmd)
+                            if resp:
+                                client_sock.sendall(resp.encode("latin1"))
+                    else:
+                        break
 
         except Exception as e:
             logger.debug(f"LX200 client handler disconnected: {e}")
@@ -105,168 +110,261 @@ class LX200Server:
 
     def _execute_command(self, cmd: str) -> Optional[str]:
         """
-        Executes standard LX200 commands.
+        Executes standard Meade LX200 commands.
         """
-        # 1. Coordinate queries
-        if cmd == ":GR" or cmd == "GR":
-            # Get RA: HH:MM:SS# or HH:MM.T#
-            ra, _, _, _ = self.model.get_current_coordinates()
-            h = int(ra)
-            m = int((ra - h) * 60)
-            s = int(((ra - h) * 60 - m) * 60)
-            return f"{h:02d}:{m:02d}:{s:02d}#"
+        try:
+            # 1. Coordinate queries
+            if cmd in [":GR", "GR"]:
+                # Get RA: HH:MM:SS#
+                ra, _, _, _ = self.model.get_current_coordinates()
+                h = int(ra) % 24
+                m = int((ra - int(ra)) * 60)
+                s = int(((ra - int(ra)) * 60 - m) * 60)
+                return f"{h:02d}:{m:02d}:{s:02d}#"
 
-        elif cmd == ":GD" or cmd == "GD":
-            # Get Dec: sDD*MM:SS# or sDD*MM#
-            _, dec, _, _ = self.model.get_current_coordinates()
-            sign = "+" if dec >= 0 else "-"
-            abs_dec = abs(dec)
-            d = int(abs_dec)
-            m = int((abs_dec - d) * 60)
-            s = int(((abs_dec - d) * 60 - m) * 60)
-            return f"{sign}{d:02d}*{m:02d}:{s:02d}#"
+            elif cmd in [":GD", "GD"]:
+                # Get Dec: sDD*MM:SS#
+                _, dec, _, _ = self.model.get_current_coordinates()
+                sign = "+" if dec >= 0 else "-"
+                abs_dec = abs(dec)
+                d = int(abs_dec)
+                m = int((abs_dec - d) * 60)
+                s = int(((abs_dec - d) * 60 - m) * 60)
+                return f"{sign}{d:02d}*{m:02d}:{s:02d}#"
 
-        # 2. Coordinate staging
-        elif cmd.startswith(":Sr") or cmd.startswith("Sr"):
-            # Set Target RA: :SrHH:MM:SS# or :SrHH:MM.T#
-            val_str = cmd.replace(":Sr", "").replace("Sr", "").strip()
-            try:
-                parts = val_str.split(":")
-                if len(parts) >= 2:
-                    h = float(parts[0])
-                    m = float(parts[1])
-                    s = float(parts[2]) if len(parts) > 2 else 0.0
-                    self.target_ra_hours = h + (m / 60.0) + (s / 3600.0)
-                    return "1"
-            except Exception as e:
-                logger.error(f"Error parsing LX200 RA {val_str}: {e}")
-            return "0"
+            elif cmd in [":GA", "GA"]:
+                # Get Altitude: sDD*MM:SS#
+                _, _, alt, _ = self.model.get_current_coordinates()
+                sign = "+" if alt >= 0 else "-"
+                abs_alt = abs(alt)
+                d = int(abs_alt)
+                m = int((abs_alt - d) * 60)
+                s = int(((abs_alt - d) * 60 - m) * 60)
+                return f"{sign}{d:02d}*{m:02d}:{s:02d}#"
 
-        elif cmd.startswith(":Sd") or cmd.startswith("Sd"):
-            # Set Target Dec: :SdsDD*MM# or :SdsDD*MM:SS#
-            val_str = cmd.replace(":Sd", "").replace("Sd", "").strip()
-            try:
-                sign = -1.0 if val_str.startswith("-") else 1.0
-                clean = val_str.lstrip("+-").replace("*", ":")
-                parts = clean.split(":")
-                if len(parts) >= 2:
-                    d = float(parts[0])
-                    m = float(parts[1])
-                    s = float(parts[2]) if len(parts) > 2 else 0.0
-                    self.target_dec_deg = sign * (d + (m / 60.0) + (s / 3600.0))
-                    return "1"
-            except Exception as e:
-                logger.error(f"Error parsing LX200 Dec {val_str}: {e}")
-            return "0"
+            elif cmd in [":GZ", "GZ"]:
+                # Get Azimuth: DDD*MM:SS#
+                _, _, _, az = self.model.get_current_coordinates()
+                az = az % 360.0
+                d = int(az)
+                m = int((az - d) * 60)
+                s = int(((az - d) * 60 - m) * 60)
+                return f"{d:03d}*{m:02d}:{s:02d}#"
 
-        # 3. Motion & Slew
-        elif cmd == ":MS" or cmd == "MS":
-            # Slew to target coordinates
-            if self.target_ra_hours is not None and self.target_dec_deg is not None:
+            elif cmd in [":Gr", "Gr"]:
+                # Get Target RA: HH:MM:SS#
+                ra = self.target_ra_hours if self.target_ra_hours is not None else self.model.get_current_coordinates()[0]
+                h = int(ra) % 24
+                m = int((ra - int(ra)) * 60)
+                s = int(((ra - int(ra)) * 60 - m) * 60)
+                return f"{h:02d}:{m:02d}:{s:02d}#"
+
+            elif cmd in [":Gd", "Gd"]:
+                # Get Target Dec: sDD*MM:SS#
+                dec = self.target_dec_deg if self.target_dec_deg is not None else self.model.get_current_coordinates()[1]
+                sign = "+" if dec >= 0 else "-"
+                abs_dec = abs(dec)
+                d = int(abs_dec)
+                m = int((abs_dec - d) * 60)
+                s = int(((abs_dec - d) * 60 - m) * 60)
+                return f"{sign}{d:02d}*{m:02d}:{s:02d}#"
+
+            # 2. Time & Date queries
+            elif cmd in [":GS", "GS"]:
+                # Get Sidereal Time: HH:MM:SS#
+                lst = self.model.get_local_sidereal_time_hours()
+                h = int(lst) % 24
+                m = int((lst - int(lst)) * 60)
+                s = int(((lst - int(lst)) * 60 - m) * 60)
+                return f"{h:02d}:{m:02d}:{s:02d}#"
+
+            elif cmd in [":Gc", "Gc"]:
+                # Get Clock Format: 24#
+                return "24#"
+
+            elif cmd in [":Ga", "Ga"]:
+                # Local time 12-hour format: HH:MM:SS#
+                now = time.localtime()
+                h12 = now.tm_hour % 12
+                h12 = 12 if h12 == 0 else h12
+                return f"{h12:02d}:{now.tm_min:02d}:{now.tm_sec:02d}#"
+
+            elif cmd in [":GL", "GL"]:
+                # Get Local Time 24h: HH:MM:SS#
+                now = time.localtime()
+                return f"{now.tm_hour:02d}:{now.tm_min:02d}:{now.tm_sec:02d}#"
+
+            elif cmd in [":GC", "GC"]:
+                # Get Calendar Date: MM/DD/YY#
+                now = time.localtime()
+                return f"{now.tm_mon:02d}/{now.tm_mday:02d}/{str(now.tm_year)[-2:]}#"
+
+            elif cmd in [":GG", "GG"]:
+                # Get UTC offset in hours: sHH#
+                if time.daylight and time.localtime().tm_isdst > 0:
+                    offset_sec = time.altzone
+                else:
+                    offset_sec = time.timezone
+                offset_hours = int(offset_sec / 3600)
+                sign = "+" if offset_hours >= 0 else "-"
+                return f"{sign}{abs(offset_hours):02d}#"
+
+            # 3. Product, Version & Site Info
+            elif cmd in [":GVP", "GVP"]:
+                return "Kaukoputki#"
+
+            elif cmd in [":GVN", "GVN"]:
+                return "2.0#"
+
+            elif cmd in [":GVD", "GVD"]:
+                return "Sep 17 2026#"
+
+            elif cmd in [":GVT", "GVT"]:
+                return "12:00:00#"
+
+            elif cmd in [":GVF", "GVF"]:
+                return "Kaukoputki v2.0 Meade LX200#"
+
+            elif cmd in [":Gt", "Gt"]:
+                # Get Latitude: sDD*MM#
+                lat = self.model.config.observatory.latitude_deg
+                sign = "+" if lat >= 0 else "-"
+                abs_lat = abs(lat)
+                d = int(abs_lat)
+                m = int((abs_lat - d) * 60)
+                return f"{sign}{d:02d}*{m:02d}#"
+
+            elif cmd in [":Gg", "Gg"]:
+                # Get Longitude: DDD*MM# (Meade standard: degrees West 0..360)
+                lon_east = self.model.config.observatory.longitude_deg
+                lon_west = (360.0 - (lon_east % 360.0)) % 360.0
+                d = int(lon_west)
+                m = int((lon_west - d) * 60)
+                return f"{d:03d}*{m:02d}#"
+
+            elif cmd in [":GW", "GW"]:
+                # Alignment status: P = Polar, T = Tracking
+                return "PT#"
+
+            elif cmd in [":GT", "GT"]:
+                # Tracking frequency (Hz)
+                return "60.0#"
+
+            elif cmd in [":GSTAT", "GSTAT"]:
+                return "0#"
+
+            elif cmd in [":GM", "GM", ":GN", "GN", ":GO", "GO", ":GP", "GP"]:
+                return "Jakokoski#"
+
+            elif cmd in [":LI", "LI"]:
+                return "None#"
+
+            # 4. Target staging
+            elif cmd.startswith((":Sr", "Sr")):
+                val_str = cmd.replace(":Sr", "").replace("Sr", "").strip()
                 try:
-                    if self.model.is_parked:
-                        self.model.unpark()
-                    self.model.slew_to_coordinates(self.target_ra_hours, self.target_dec_deg, async_mode=True)
-                    return "0" # 0 = Slew possible and started
-                except SafetyLimitViolation as e:
-                    logger.warning(f"LX200 Slew blocked by safety envelope: {e}")
-                    return "1" # 1 = Object below horizon or limits
+                    parts = val_str.split(":")
+                    if len(parts) >= 2:
+                        h = float(parts[0])
+                        m = float(parts[1])
+                        s = float(parts[2]) if len(parts) > 2 else 0.0
+                        self.target_ra_hours = h + (m / 60.0) + (s / 3600.0)
+                        return "1"
                 except Exception as e:
-                    logger.error(f"LX200 Slew failed: {e}")
-                    return "1"
-            return "1"
+                    logger.error(f"Error parsing LX200 RA {val_str}: {e}")
+                return "0"
 
-        # 4. Abort
-        elif cmd in [":Q", "Q", ":Qn", ":Qs", ":Qe", ":Qw"]:
-            self.model.abort_slew()
+            elif cmd.startswith((":Sd", "Sd")):
+                val_str = cmd.replace(":Sd", "").replace("Sd", "").strip()
+                try:
+                    sign = -1.0 if val_str.startswith("-") else 1.0
+                    clean = val_str.lstrip("+-").replace("*", ":")
+                    parts = clean.split(":")
+                    if len(parts) >= 2:
+                        d = float(parts[0])
+                        m = float(parts[1])
+                        s = float(parts[2]) if len(parts) > 2 else 0.0
+                        self.target_dec_deg = sign * (d + (m / 60.0) + (s / 3600.0))
+                        return "1"
+                except Exception as e:
+                    logger.error(f"Error parsing LX200 Dec {val_str}: {e}")
+                return "0"
+
+            # 5. Motion & Slew
+            elif cmd in [":MS", "MS"]:
+                if self.target_ra_hours is not None and self.target_dec_deg is not None:
+                    try:
+                        if self.model.is_parked:
+                            self.model.unpark()
+                        self.model.slew_to_coordinates(self.target_ra_hours, self.target_dec_deg, async_mode=True)
+                        return "0"  # 0 = Slew possible and started
+                    except SafetyLimitViolation as e:
+                        logger.warning(f"LX200 Slew blocked by safety envelope: {e}")
+                        return "1"  # 1 = Below horizon or limits
+                    except Exception as e:
+                        logger.error(f"LX200 Slew failed: {e}")
+                        return "1"
+                return "1"
+
+            elif cmd in [":Q", "Q", ":Qn", ":Qs", ":Qe", ":Qw"]:
+                self.model.abort_slew()
+                return None
+
+            elif cmd in [":CM", "CM"]:
+                # Synchronize mount coordinates
+                if self.target_ra_hours is not None and self.target_dec_deg is not None:
+                    self.model.sync_to_coordinates(self.target_ra_hours, self.target_dec_deg)
+                    return "M#"
+                return "N#"
+
+            elif cmd in [":D", "D"]:
+                # Slewing status
+                return "|#" if self.model.is_slewing else "#"
+
+            elif cmd in [":U", "U"]:
+                return None
+
+            elif cmd.startswith((":St", "St", ":Sg", "Sg", ":SL", "SL", ":SC", "SC", ":SG", "SG")):
+                return "1"
+
+            elif cmd.startswith((":Rg", "Rg", ":Rc", "Rc", ":Rm", "Rm", ":Rs", "Rs")):
+                return None
+
+            elif cmd in [":hP", "hP"]:
+                self.model.park()
+                return None
+
+            elif cmd in [":hU", "hU"]:
+                self.model.unpark()
+                return None
+
+            elif cmd.startswith((":Me", ":Mw", ":Mn", ":Ms")):
+                direction = cmd[2].lower()
+                guide_rate = 0.5 * (15.041 / 3600.0)
+                if direction == "e":
+                    self.model.move_axis(0, guide_rate)
+                elif direction == "w":
+                    self.model.move_axis(0, -guide_rate)
+                elif direction == "n":
+                    self.model.move_axis(1, guide_rate)
+                elif direction == "s":
+                    self.model.move_axis(1, -guide_rate)
+                return None
+
+            # Fallbacks
+            if cmd.startswith((":G", "G")):
+                logger.debug(f"LX200 unhandled query '{cmd}', returning default '0#'")
+                return "0#"
+
+            if cmd.startswith((":S", "S")):
+                logger.debug(f"LX200 unhandled set command '{cmd}', returning acknowledgment '1'")
+                return "1"
+
+            logger.debug(f"LX200 unhandled command '{cmd}'")
             return None
 
-        # 5. Synchronization (Plate Solve Sync)
-        elif cmd == ":CM" or cmd == "CM":
-            # Synchronize mount coordinates to current target coordinates
-            if self.target_ra_hours is not None and self.target_dec_deg is not None:
-                self.model.sync_to_coordinates(self.target_ra_hours, self.target_dec_deg)
-                return "M#" # Coordinates matched
-            return "N#"
-
-        # 6. Status & Site queries
-        elif cmd in [":GW", "GW"]:
-            # Alignment status: P = Polar
-            return "PT#"
-
-        elif cmd in [":Gt", "Gt"]:
-            # Get Latitude: sDD*MM#
-            lat = self.model.config.observatory.latitude_deg
-            sign = "+" if lat >= 0 else "-"
-            abs_lat = abs(lat)
-            d = int(abs_lat)
-            m = int((abs_lat - d) * 60)
-            return f"{sign}{d:02d}*{m:02d}#"
-
-        elif cmd in [":Gg", "Gg"]:
-            # Get Longitude: DDD*MM# (Meade standard: degrees West 0..360)
-            # Longitude in config is East positive (e.g. 29.9967 deg East = 330.0033 deg West)
-            lon_east = self.model.config.observatory.longitude_deg
-            lon_west = (360.0 - (lon_east % 360.0)) % 360.0
-            d = int(lon_west)
-            m = int((lon_west - d) * 60)
-            return f"{d:03d}*{m:02d}#"
-
-        elif cmd in [":GL", "GL"]:
-            # Get Local Time: HH:MM:SS#
-            now = time.localtime()
-            return f"{now.tm_hour:02d}:{now.tm_min:02d}:{now.tm_sec:02d}#"
-
-        elif cmd in [":GC", "GC"]:
-            # Get Calendar Date: MM/DD/YY#
-            now = time.localtime()
-            return f"{now.tm_mon:02d}/{now.tm_mday:02d}/{str(now.tm_year)[-2:]}#"
-
-        elif cmd in [":GG", "GG"]:
-            # Get UTC offset in hours
-            offset_hours = -int(time.timezone / 3600)
-            sign = "+" if offset_hours >= 0 else "-"
-            return f"{sign}{abs(offset_hours):02d}#"
-
-        elif cmd in [":D", "D"]:
-            # Distance / slewing status: returns '|#' when slewing, empty '#' when stationary
-            return "|#" if self.model.is_slewing else "#"
-
-        elif cmd in [":U", "U"]:
-            # Toggle precision mode (accept and return nothing)
+        except Exception as e:
+            logger.exception(f"LX200 error executing command '{cmd}': {e}")
+            if cmd.startswith((":G", "G")):
+                return "0#"
             return None
-
-        elif cmd.startswith((":St", "St", ":Sg", "Sg", ":SL", "SL", ":SC", "SC", ":SG", "SG")):
-            # Set site/time commands: acknowledge with "1"
-            return "1"
-
-        elif cmd.startswith((":Rg", "Rg", ":Rc", "Rc", ":Rm", "Rm", ":Rs", "Rs")):
-            # Set motion rates: acknowledge
-            return None
-
-        elif cmd == ":hP" or cmd == "hP":
-            # Park mount
-            self.model.park()
-            return None
-
-        elif cmd == ":hU" or cmd == "hU":
-            # Unpark mount
-            self.model.unpark()
-            return None
-
-        elif cmd.startswith(":Me") or cmd.startswith(":Mw") or cmd.startswith(":Mn") or cmd.startswith(":Ms"):
-            # Move direction (Pulse guide / jog)
-            direction = cmd[2].lower()
-            guide_rate = 0.5 * (15.041 / 3600.0) # 0.5x sidereal in deg/sec
-            if direction == "e":
-                self.model.move_axis(0, guide_rate)
-            elif direction == "w":
-                self.model.move_axis(0, -guide_rate)
-            elif direction == "n":
-                self.model.move_axis(1, guide_rate)
-            elif direction == "s":
-                self.model.move_axis(1, -guide_rate)
-            return None
-
-        # Default fallback
-        return None

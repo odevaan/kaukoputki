@@ -126,3 +126,26 @@ Because electrical switches were removed, all limits are checked in software bef
   - The driver flags `is_calibrated = False` on boot.
   - The user is notified that the mount is uncalibrated.
   - A quick plate solve (e.g. from the guide camera or main camera via ASTAP/PlateSolve3 in N.I.N.A.) should be performed after the first slew to resolve the true sky position and issue a `SyncToCoordinates` command to calibrate the pointing model.
+
+---
+
+## 6. INDI LX200 Protocol & KStars/Ekos Integration
+
+### 6.1 Driver Selection & Architecture
+- KStars/Ekos communicates with mounts using the INDI client-server model.
+- While `indiserver` (port 7624) is an INDI XML server, individual INDI drivers (such as `indi_lx200basic`) connect to the mount hardware via RS-232 serial or TCP/IP.
+- The Kaukoputki driver provides an emulated Meade LX200 command server on TCP port `4030` (`app/lx200_server.py`).
+- Therefore, in Ekos:
+  - Ekos runs in **Local** mode (starting the local INDI driver `indi_lx200basic`).
+  - `indi_lx200basic` is configured under its **Connection** tab with `Network` (TCP), `127.0.0.1`, and port `4030`.
+
+### 6.2 Root Cause of KStars Segmentation Fault on Opening INDI Control Panel
+During connection and initial property tree population, `indi_lx200basic` queries a succession of Meade commands (`:Gc#`, `:GS#`, `:GL#`, `:GC#`, `:GG#`, `:GVP#`, `:GVN#`, `:GA#`, `:GZ#`, etc.).
+1. If any query returns no response, INDI's `tty_nread_section()` blocks for the full 5.0-second timeout per command.
+2. In KStars Qt GUI, if the INDI Control Panel is opened while driver properties remain unpopulated, timed out, or interrupted by an uncaught server exception, older versions of KStars dereference uninitialized property pointers and trigger a segmentation fault (SIGSEGV).
+3. Any malformed property values written to `~/.indi/LX200 Basic_config.xml` will cause KStars to crash on subsequent launches.
+
+### 6.3 Driver Protocol Remedies
+- **Universal Query Fallback**: Every unrecognized query starting with `:G` immediately returns `0#` (or `#`), and unrecognized set commands starting with `:S` return `1` (acknowledged), preventing any blocking timeouts in `tty_nread_section()`.
+- **Full Query Suite**: Implemented complete responses for `:Gc#` (24-hour clock format), `:GS#` (Local Sidereal Time), `:GA#` (Altitude), `:GZ#` (Azimuth), `:Gr#` / `:Gd#` (Target coordinates), and version queries (`:GVP#`, `:GVN#`, `:GVF#`).
+- **Cache Cleanliness**: Clearing any stale `~/.indi/LX200*` configuration files resets Ekos to clean defaults.

@@ -48,6 +48,37 @@ def test_lx200_queries(lx200):
     resp = send_cmd(4035, ":GD#")
     assert "*" in resp and resp.endswith("#")
 
+    # Altitude & Azimuth
+    resp = send_cmd(4035, ":GA#")
+    assert "*" in resp and resp.endswith("#")
+    resp = send_cmd(4035, ":GZ#")
+    assert "*" in resp and resp.endswith("#")
+
+    # Time & Date
+    resp = send_cmd(4035, ":Gc#")
+    assert resp == "24#"
+
+    resp = send_cmd(4035, ":GS#")
+    assert ":" in resp and resp.endswith("#")
+
+    resp = send_cmd(4035, ":GL#")
+    assert ":" in resp and resp.endswith("#")
+
+    resp = send_cmd(4035, ":GC#")
+    assert "/" in resp and resp.endswith("#")
+
+    resp = send_cmd(4035, ":GG#")
+    assert resp.endswith("#")
+
+    # Product and version queries
+    assert send_cmd(4035, ":GVP#") == "Kaukoputki#"
+    assert send_cmd(4035, ":GVN#") == "2.0#"
+    assert send_cmd(4035, ":GVF#") == "Kaukoputki v2.0 Meade LX200#"
+
+    # Unknown query and set fallbacks (must never hang INDI)
+    assert send_cmd(4035, ":GUNKNOWN#") == "0#"
+    assert send_cmd(4035, ":SUNKNOWN#") == "1"
+
     # Alignment ACK
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect(("127.0.0.1", 4035))
@@ -67,6 +98,12 @@ def test_lx200_slew_and_sync(lx200):
     assert resp == "1"
     assert lx200.target_dec_deg == 45.0
 
+    # Query target coordinates
+    resp = send_cmd(4035, ":Gr#")
+    assert "12:30:00#" in resp
+    resp = send_cmd(4035, ":Gd#")
+    assert "+45*00:00#" in resp
+
     # Sync
     resp = send_cmd(4035, ":CM#")
     assert "Coordinates matched" in resp or "M#" in resp
@@ -75,3 +112,4 @@ def test_lx200_slew_and_sync(lx200):
     # Slew
     resp = send_cmd(4035, ":MS#")
     assert resp == "0"
+
