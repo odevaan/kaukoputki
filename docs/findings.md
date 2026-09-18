@@ -42,8 +42,40 @@ This document records all reverse-engineering discoveries, technical parameters,
   - Handshake: **None** (hardware loopback)
   - Default Timeout: 4000 ms (`JET32_SERIAL_DEFAULT_TIMEOUT`)
 
-### 2.2 Jetter Register Architecture
+### 2.2 Jetter PCOM7 Protocol & Serial Framing
+The Jetter Nano-B utilizes Jetter's proprietary PCOM7 (PC-PPLC) protocol:
+- **Framing Bytes (Extended ASCII)**:
+  - Standard ASCII control characters `0x02` (STX) and `0x03` (ETX) were replaced by Jetter to prevent collision with binary payload bytes.
+  - **STX (Start of Text)**: `0xDA` (218 decimal).
+  - **ETX (End of Text)**: `0xDB` (219 decimal).
+- **Block Check Character (BCC)**:
+  - Calculated as an iterative logical XOR across all bytes in the payload (excluding STX and ETX).
+  - Placed immediately preceding the `0xDB` ETX byte (`[0xDA, ...payload, BCC, 0xDB]`).
+- **Command Telegram Format**:
+  - Read register: `STX | 'g' | ADDR | BCC | ETX`
+  - Write register: `STX | 's' | ADDR | ':' | VALUE | BCC | ETX`
+  - Read input: `STX | 'i' | ADDR | BCC | ETX`
+  - Set output: `STX | 'o' | ADDR | ':' | VALUE | BCC | ETX`
+  - Read flag: `STX | 'h' | ADDR | BCC | ETX`
+  - Set flag: `STX | 't' | ADDR | ':' | VALUE | BCC | ETX`
+
+### 2.3 24-Bit Integer Architecture & Memory Addressing
+- **Integer Size**: The Jetter Nano-B processor natively uses **24-bit signed integers** ($-8,388,608$ to $+8,388,607$, `0x000000` to `0xFFFFFF`).
+- **Upper Byte Masking Rule**:
+  - The highest 8 bits (bits 24..31) of any transmitted communication word must be strictly zero (`value & 0x00FFFFFF`).
+  - If a modern 32-bit system writes negative numbers formatted with standard 32-bit two's complement (populating bits 24..31 with `1`s), the Nano-B rejects the packet with a *"Value is Incorrect"* diagnostic fault.
+  - Software must explicitly convert signed integers to 24-bit two's complement (`(val + (1 << 24)) & 0x00FFFFFF`) before transmission.
+- **Base-1 Bit Indexing**:
+  - The Jetter Nano-B indexes register bits from **1 to 24** (unlike 0-based indexing in C/Python).
+  - Bit 1 is the LSB (`2^0`), Bit 9 is the 9th bit (`2^8`).
+  - Bitwise operations must map `1 << (bit - 1)` to match Jetter's physical specifications.
+
+### 2.4 Jetter Register Architecture
 The Jetter Nano-B controller uses dedicated register blocks for intelligent servo modules:
+- **System & Diagnostic Registers**:
+  - `2000`: Controller software/firmware version.
+  - `2001`: System status / error register (0 = OK).
+  - `2029`: System bus baud rate.
 - **Axis 2: Declination ($\delta$)**
   - Register range: `12100` .. `12199`
   - `12100`: Axis Control and Status
@@ -51,19 +83,19 @@ The Jetter Nano-B controller uses dedicated register blocks for intelligent serv
     - Bit 9 = 0: Speed Control Mode (velocity/tracking mode).
     - Bit 1: In-position / target reached flag (1 = target reached, 0 = in motion).
   - `12101`: Axis Direction / Motion Command (9 = positive, 10 = negative).
-  - `12102`: Target / Nominal Position (`destep`, signed 32-bit).
+  - `12102`: Target / Nominal Position (`destep`, signed 24-bit).
   - `12103`: Slewing Speed (`speed = 6000`, reference speed = `2000`).
   - `12104`: Limit / Reference Sensor configuration (Bit 0 = active level).
-  - `12109`: Actual Encoder Position (`destep`, signed 32-bit).
+  - `12109`: Actual Encoder Position (`destep`, signed 24-bit).
   - `12122`: Motor Resolution Prescaler (`32` for 512 steps/rev to avoid register overflow).
 - **Axis 3: Right Ascension / Hour Angle ($HA$)**
   - Register range: `13100` .. `13199`
   - `13100`: Axis Control and Status (Bit 9 = Position/Speed mode, Bit 1 = In-position).
   - `13101`: Axis Direction / Motion Command (9 = positive, 10 = negative).
-  - `13102`: Target / Nominal Position (`hastep`, signed 32-bit).
+  - `13102`: Target / Nominal Position (`hastep`, signed 24-bit).
   - `13103`: Slewing Speed (`speed = 6000`, reference speed = `2000`).
   - `13104`: Limit / Reference Sensor configuration.
-  - `13109`: Actual Encoder Position (`hastep`, signed 32-bit).
+  - `13109`: Actual Encoder Position (`hastep`, signed 24-bit).
   - `13122`: Motor Resolution Prescaler (`32` for 512 steps/rev).
 - **Digital Outputs**:
   - Output `101`: Movement warning buzzer (`SetOutput(101, 1)` to sound during slew, `0` to silence).

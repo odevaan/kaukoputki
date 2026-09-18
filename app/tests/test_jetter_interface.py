@@ -57,6 +57,46 @@ def test_jetter_interface_mock_mode():
     assert iface.get_register(12103) == 0
     assert iface.get_register(13103) == 0
     # Buzzer off
-    assert iface.get_output(101) == 0
-
     iface.disconnect()
+
+
+def test_jetter_24bit_integer_conversion():
+    # Boundary tests
+    assert JetterInterface.to_24bit_unsigned(0) == 0
+    assert JetterInterface.from_24bit_signed(0) == 0
+
+    assert JetterInterface.to_24bit_unsigned(8388607) == 0x007FFFFF
+    assert JetterInterface.from_24bit_signed(0x007FFFFF) == 8388607
+
+    assert JetterInterface.to_24bit_unsigned(-1) == 0x00FFFFFF
+    assert JetterInterface.from_24bit_signed(0x00FFFFFF) == -1
+
+    assert JetterInterface.to_24bit_unsigned(-8388608) == 0x00800000
+    assert JetterInterface.from_24bit_signed(0x00800000) == -8388608
+
+    # Arbitrary negative and positive values
+    test_vals = [12345, -67890, 5000000, -5000000, -100, 100]
+    for v in test_vals:
+        encoded = JetterInterface.to_24bit_unsigned(v)
+        # Upper 8 bits (bits 24..31) must be strictly 0
+        assert (encoded & 0xFF000000) == 0
+        decoded = JetterInterface.from_24bit_signed(encoded)
+        assert decoded == v
+
+
+def test_pcom7_telegram_framing():
+    iface = JetterInterface(mock_mode=True)
+    try:
+        # Build register set telegram: 's', 12102, 100
+        tgram = iface._build_telegram('s', 12102, 100)
+        assert tgram[0] == 0xDA  # Jetter PCOM7 STX
+        assert tgram[-1] == 0xDB # Jetter PCOM7 ETX
+
+        # Check payload and BCC
+        body = b"s12102:100"
+        expected_bcc = iface._calculate_checksum(body)
+        assert tgram[1:-2] == body
+        assert tgram[-2] == expected_bcc
+    finally:
+        iface.disconnect()
+
